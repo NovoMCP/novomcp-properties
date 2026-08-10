@@ -1,0 +1,18 @@
+fastapi==0.115.12
+uvicorn==0.34.0
+pydantic==2.11.1
+python-dotenv==1.0.0
+numpy==1.24.3
+scipy==1.10.1
+rdkit==2023.9.1
+httpx>=0.25.0
+
+# ML inference
+scikit-learn==1.5.2
+chemprop>=2.1.0
+lightning>=2.0.0
+
+# Model weights: Hugging Face is the default backend (public, no cloud creds)
+huggingface_hub>=0.20.0
+# Optional: object-store backend for private deployments (STORAGE_BACKEND=S3)
+boto3>=1.35.0

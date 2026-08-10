@@ -1,0 +1,54 @@
+NovoMCP novomcp-properties
+Copyright 2026 Quant NexusAI Inc. (NovoMCP)
+
+The service code in this repository is licensed under the Apache License 2.0
+(see LICENSE). Trained model weights, distributed separately via Hugging Face
+(NovoMCP/novomcp-properties), are also licensed under the Apache License 2.0.
+
+These models were trained on the datasets listed below. Attribution to these
+sources is required when redistributing the weights. Where a source dataset
+carries a Creative Commons or other license, that is noted; the trained weights
+are released under Apache-2.0 with attribution.
+
+--------------------------------------------------------------------------------
+pKa — training data
+--------------------------------------------------------------------------------
+
+IUPAC Dissociation Constants (primary training set)
+  Compilation of experimental dissociation constants published by IUPAC.
+  https://github.com/IUPAC/Dissociation-Constants
+
+ChEMBL pKa measurements
+  Extracted from ChEMBL (via czodrowskilab/Machine-learning-meets-pKa).
+  ChEMBL source data licensed CC-BY-SA 3.0. EMBL-EBI, https://www.ebi.ac.uk/chembl/
+  https://github.com/czodrowskilab/Machine-learning-meets-pKa
+
+Uni-pKa (dwar-iBond microscopic pKa)
+  Licensed Apache-2.0. https://github.com/dptech-corp/Uni-pKa
+
+SAMPL6 / SAMPL7 (validation / benchmark only — not used to train the weights)
+  Community blind-challenge datasets. https://github.com/samplchallenges
+
+--------------------------------------------------------------------------------
+Aqueous solubility — training data
+--------------------------------------------------------------------------------
+
+AqSolDB (pretraining)
+  Sorkun, M.C., Khetan, A., Er, S. "AqSolDB, a curated reference set of aqueous
+  solubility." Sci. Data 6, 143 (2019). Source data licensed CC-BY 4.0.
+
+BigSolDB 2.0 (temperature-dependent fine-tuning)
+  Temperature-resolved aqueous solubility measurements, published via Zenodo.
+
+--------------------------------------------------------------------------------
+Bond dissociation energy (BDE)
+--------------------------------------------------------------------------------
+
+alfabet (pretrained model)
+  Used as an installed dependency (St. John et al., NREL). alfabet's pretrained
+  network is downloaded by that package under its own license and is NOT
+  redistributed as part of this repository's weights.
+
+--------------------------------------------------------------------------------
+
+Model weights: https://huggingface.co/NovoMCP/novomcp-properties
