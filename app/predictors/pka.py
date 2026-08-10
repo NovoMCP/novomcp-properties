@@ -86,6 +86,8 @@ class PkaResult:
     confidence: Optional[float] = None
     uncertainty: Optional[float] = None
     model_version: str = ""
+    degraded: bool = False
+    degraded_reason: Optional[str] = None
 
 
 def initialize():
@@ -290,6 +292,7 @@ def _predict_v9(smiles: str) -> Optional[PkaResult]:
 
         # Get xTB data
         xtb_data = _get_xtb_data(smiles)
+        qm_error = xtb_data.get("_error")
         global_feats = np.array([
             xtb_data.get("energy_hartree", 0.0),
             xtb_data.get("homo_ev", 0.0),
@@ -378,6 +381,26 @@ def _predict_v9(smiles: str) -> Optional[PkaResult]:
         mean_uncertainty = np.mean(uncertainties)
         confidence = _compute_confidence(mean_uncertainty, len(models))
 
+        # novomcp-qm supplies the xTB global features every v9 route uses, and the
+        # per-atom charges the v8 (sulfonamide / aromatic N-H) specialist needs. When
+        # it's unavailable the model ran on zeros — flag it instead of returning a
+        # confident-looking number silently.
+        degraded = bool(qm_error)
+        degraded_reason = None
+        if degraded:
+            confidence = min(confidence, 0.4) if confidence else 0.4
+            if route_label == "v8-charges":
+                degraded_reason = (
+                    "charge specialist selected (sulfonamide / aromatic N-H), but "
+                    "per-atom charges and xTB features from novomcp-qm are unavailable "
+                    f"({qm_error}) — predicted without them; lower confidence"
+                )
+            else:
+                degraded_reason = (
+                    "xTB features from novomcp-qm are unavailable "
+                    f"({qm_error}) — predicted without them; lower confidence"
+                )
+
         return PkaResult(
             smiles=smiles,
             pka_values=sorted(pka_values),
@@ -386,6 +409,8 @@ def _predict_v9(smiles: str) -> Optional[PkaResult]:
             confidence=confidence,
             uncertainty=round(float(mean_uncertainty), 3),
             model_version=f"v9-{route_label}-{len(models)}",
+            degraded=degraded,
+            degraded_reason=degraded_reason,
         )
     except Exception as e:
         logger.error(f"pKa v9 prediction failed for {smiles}: {e}")
