@@ -5,7 +5,8 @@ Trained ML models for physicochemical properties — **pKa**, **aqueous solubili
 open [NovoMCP](https://github.com/NovoMCP) computational-chemistry engine; runs standalone.
 
 Model weights are hosted on Hugging Face and downloaded on first start — **no cloud
-credentials required.**
+credentials required.** Solubility and BDE work out of the box; **pKa weights are
+NonCommercial** and opt-in (see [pKa weights](#pka-weights-noncommercial)).
 
 ## Quick start
 
@@ -13,13 +14,13 @@ credentials required.**
 docker run -p 8030:8030 ghcr.io/novomcp/novomcp-properties:latest
 ```
 
-On boot the service pulls its weights from Hugging Face
+On boot the service pulls the permissive (solubility) weights from Hugging Face
 ([`NovoMCP/novomcp-properties`](https://huggingface.co/NovoMCP/novomcp-properties)) into
 `/app/models`, then serves:
 
 ```bash
 curl -s localhost:8030/health
-curl -s -X POST localhost:8030/api/predict-pka \
+curl -s -X POST localhost:8030/api/predict-solubility \
   -H 'content-type: application/json' \
   -d '{"smiles":"CC(=O)Oc1ccccc1C(=O)O"}'
 ```
@@ -58,13 +59,30 @@ If weights cannot be loaded, the affected predictor reports itself **unavailable
 endpoints return `503` — the service never serves a silent low-quality fallback. (A pKa-only
 opt-in, `PKA_ALLOW_EMPIRICAL=1`, serves clearly-labeled RDKit empirical estimates on purpose.)
 
+## pKa weights (NonCommercial)
+
+The pKa model is trained primarily on the IUPAC Dissociation Constants, licensed
+**CC-BY-NC-4.0 (NonCommercial)**. The pKa weights are therefore published separately,
+under CC-BY-NC-4.0, at [`NovoMCP/novomcp-pka`](https://huggingface.co/NovoMCP/novomcp-pka),
+and are **opt-in** so commercial deployments don't pull NonCommercial weights by default.
+
+For **non-commercial** use, enable pKa by pointing at that repo:
+
+```bash
+export HF_PKA_MODEL_REPO=NovoMCP/novomcp-pka   # non-commercial use only
+```
+
+Without it, the pKa endpoints return `503` (solubility and BDE are unaffected). The
+service *code* is Apache-2.0; only the pKa *weights* carry the NonCommercial term.
+
 ## Env vars
 
 | Var | Default | Purpose |
 |---|---|---|
 | `PORT` | `8030` | HTTP listen port |
 | `STORAGE_BACKEND` | `HF` | `HF` \| `LOCAL` \| `S3` |
-| `HF_MODEL_REPO` | `NovoMCP/novomcp-properties` | Hugging Face weights repo |
+| `HF_MODEL_REPO` | `NovoMCP/novomcp-properties` | Hugging Face weights repo (permissive: solubility) |
+| `HF_PKA_MODEL_REPO` | – | NonCommercial pKa weights repo (opt-in; e.g. `NovoMCP/novomcp-pka`) |
 | `MODELS_DIR` | `/app/models` | Where weights are placed / read |
 | `NOVOMCP_QM_URL` | – | novomcp-qm endpoint for per-atom charges (charge-based pKa routes) |
 | `BATCH_SIZE` | `64` | Molecules per batch |
@@ -78,13 +96,18 @@ docker run -p 8030:8030 novomcp-properties
 
 ## Models
 
-- **pKa** — a routed ensemble: a per-atom-charge specialist for sulfonamides / aromatic N–H,
-  and a general model for everything else; each route reports an uncertainty estimate.
-  Benchmarked on SAMPL7. The charge-based routes use per-atom charges from `novomcp-qm`.
+- **pKa** *(NonCommercial weights, opt-in)* — a routed ensemble: a per-atom-charge specialist
+  for sulfonamides / aromatic N–H, and a general model for everything else; each route reports
+  an uncertainty estimate. Benchmarked on SAMPL7. The charge-based routes use per-atom charges
+  from `novomcp-qm`.
 - **Solubility** — pretrained on AqSolDB, fine-tuned on BigSolDB with temperature as an input.
 - **BDE** — uses the pretrained `alfabet` network (installed dependency).
 
 ## License
 
-Code: **Apache-2.0** (`LICENSE`). Model weights (on Hugging Face): **Apache-2.0**, with
-training-data attribution in [`NOTICE`](./NOTICE).
+- **Code:** Apache-2.0 (`LICENSE`).
+- **Solubility weights** (Hugging Face `NovoMCP/novomcp-properties`): Apache-2.0.
+- **pKa weights** (Hugging Face `NovoMCP/novomcp-pka`): **CC-BY-NC-4.0 (NonCommercial)** —
+  trained on the IUPAC Dissociation Constants (CC-BY-NC-4.0).
+
+Full training-data attribution in [`NOTICE`](./NOTICE).

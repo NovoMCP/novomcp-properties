@@ -206,18 +206,29 @@ def _prepare_weights():
 
 
 def _prepare_weights_hf():
-    """Download the public weights from Hugging Face into MODELS_DIR (no creds needed)."""
-    repo = os.getenv("HF_MODEL_REPO", "NovoMCP/novomcp-properties")
+    """Download public weights from Hugging Face into MODELS_DIR (no creds needed).
+
+    The main repo holds the permissive (Apache-2.0) weights — currently solubility.
+    The pKa weights are trained on NonCommercial data (IUPAC Dissociation Constants,
+    CC-BY-NC-4.0) and live in a separate CC-BY-NC-4.0 repo. They are opt-in via
+    HF_PKA_MODEL_REPO so commercial deployments don't pull NonCommercial weights by
+    default; left unset, the pKa endpoints report unavailable (503).
+    """
+    repos = [os.getenv("HF_MODEL_REPO", "NovoMCP/novomcp-properties")]
+    pka_repo = os.getenv("HF_PKA_MODEL_REPO", "").strip()
+    if pka_repo:
+        repos.append(pka_repo)
     try:
         from huggingface_hub import snapshot_download
     except Exception as e:
-        logger.error(f"huggingface_hub unavailable — cannot fetch weights from {repo}: {e}")
+        logger.error(f"huggingface_hub unavailable — cannot fetch weights: {e}")
         return
-    try:
-        snapshot_download(repo_id=repo, repo_type="model", local_dir=str(MODELS_DIR))
-        logger.info(f"Weights ready from Hugging Face {repo}")
-    except Exception as e:
-        logger.error(f"Failed to download weights from Hugging Face {repo}: {e}")
+    for repo in repos:
+        try:
+            snapshot_download(repo_id=repo, repo_type="model", local_dir=str(MODELS_DIR))
+            logger.info(f"Weights ready from Hugging Face {repo}")
+        except Exception as e:
+            logger.error(f"Failed to download weights from Hugging Face {repo}: {e}")
 
 
 def _prepare_weights_s3():
