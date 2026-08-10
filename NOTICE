@@ -13,11 +13,12 @@ Trained on:
   BigSolDB 2.0 — CC-BY-4.0. https://doi.org/10.5281/zenodo.15094979
 
 --------------------------------------------------------------------------------
-pKa — CC-BY-NC-4.0, NonCommercial  (NovoMCP/novomcp-pka)
+pKa — CC-BY-NC-SA-4.0, NonCommercial ShareAlike  (NovoMCP/novomcp-pka)
 --------------------------------------------------------------------------------
-The pKa model's primary training set, the IUPAC Dissociation Constants, is
-CC-BY-NC-4.0. The pKa weights are therefore NonCommercial and distributed
-separately; they are opt-in via HF_PKA_MODEL_REPO. Trained on:
+The pKa model's primary training set (IUPAC Dissociation Constants) is CC-BY-NC-4.0
+(NonCommercial), and it also uses ChEMBL (CC-BY-SA 3.0, ShareAlike); the pKa weights
+therefore combine both terms as CC-BY-NC-SA-4.0 and are distributed separately,
+opt-in via HF_PKA_MODEL_REPO. Trained on:
   IUPAC Dissociation Constants — CC-BY-NC-4.0. Reproduced by permission of the
     International Union of Pure and Applied Chemistry.
     https://doi.org/10.5281/zenodo.7236452
