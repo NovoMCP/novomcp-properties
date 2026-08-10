@@ -210,7 +210,8 @@ def _prepare_weights_hf():
 
     The main repo holds the permissive (Apache-2.0) weights — currently solubility.
     The pKa weights are trained on NonCommercial data (IUPAC Dissociation Constants,
-    CC-BY-NC-4.0) and live in a separate CC-BY-NC-4.0 repo. They are opt-in via
+    CC-BY-NC-4.0) plus ChEMBL (CC-BY-SA 3.0) and live in a separate CC-BY-NC-SA-4.0
+    repo. They are opt-in via
     HF_PKA_MODEL_REPO so commercial deployments don't pull NonCommercial weights by
     default; left unset, the pKa endpoints report unavailable (503).
     """
