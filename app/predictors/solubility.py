@@ -20,6 +20,26 @@ _backend: Optional[str] = None
 _custom_model = None
 _descriptor_model = None
 
+# The trained model. "esol-descriptors" is a crude Delaney heuristic, not a
+# trained model — serving it silently when the checkpoint is missing hands the
+# caller low-quality solubility with no signal. Treat that as unavailable unless
+# explicitly opted into (mirrors the pKa predictor).
+_TRAINED_BACKEND = "chemprop-aqsoldb"
+
+
+def _weights_loaded() -> bool:
+    return _backend == _TRAINED_BACKEND
+
+
+def _esol_allowed() -> bool:
+    """Opt-in to serve the ESOL descriptor heuristic on purpose."""
+    return os.getenv("SOLUBILITY_ALLOW_ESOL", "").strip().lower() in ("1", "true", "yes")
+
+
+def is_available() -> bool:
+    """Trained model loaded, or the ESOL heuristic explicitly opted into."""
+    return _weights_loaded() or _esol_allowed()
+
 
 @dataclass
 class SolubilityResult:
@@ -54,7 +74,19 @@ def initialize():
         from rdkit import Chem
         from rdkit.Chem import Descriptors
         _backend = "esol-descriptors"
-        logger.info("Solubility: using ESOL descriptor-based estimation")
+        if _esol_allowed():
+            logger.warning(
+                "Solubility: no trained model found — serving ESOL descriptor "
+                "estimates because SOLUBILITY_ALLOW_ESOL is set. Low-confidence, "
+                "labeled method='esol-delaney'."
+            )
+        else:
+            logger.error(
+                "Solubility: trained model failed to load (no checkpoint found). "
+                "The solubility endpoints will return 503 (model unavailable) rather "
+                "than silently serving ESOL descriptor estimates. Wire the weights, or "
+                "set SOLUBILITY_ALLOW_ESOL=1 to opt into labeled ESOL output."
+            )
         return True
     except Exception as e:
         logger.error(f"Solubility: failed to initialize: {e}")
@@ -175,8 +207,15 @@ def _build_result(
 
 
 def is_ready() -> bool:
-    return _backend is not None
+    # Honest readiness: ESOL-only (missing trained model) is not ready unless
+    # ESOL serving is explicitly opted into.
+    return is_available()
 
 
 def get_info() -> dict:
-    return {"backend": _backend or "not_loaded", "ready": is_ready()}
+    return {
+        "backend": _backend or "not_loaded",
+        "ready": is_ready(),
+        "weights_loaded": _weights_loaded(),
+        "esol_only": _backend == "esol-descriptors",
+    }

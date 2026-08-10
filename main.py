@@ -66,6 +66,8 @@ class PkaResponse(BaseModel):
     confidence: Optional[float] = None
     uncertainty: Optional[float] = None
     model_version: Optional[str] = None
+    degraded: bool = False
+    degraded_reason: Optional[str] = None
 
 class SolubilityRequest(BaseModel):
     smiles: str = Field(..., description="SMILES string")
@@ -300,7 +302,8 @@ async def startup_event():
 
     pka.initialize()
     pka_ok = pka.is_available()   # honest: empirical-only (missing weights) is not "ready"
-    sol_ok = solubility.initialize()
+    solubility.initialize()
+    sol_ok = solubility.is_available()   # honest: ESOL-only (missing weights) is not "ready"
     bde_ok = bde.initialize()
 
     elapsed = round((time.time() - t0) * 1000)
@@ -315,6 +318,13 @@ async def startup_event():
             "pKa is UNAVAILABLE — trained weights did not load, so /api/predict-pka, "
             "/api/batch-pka and the pKa portion of /api/predict-all will return 503. "
             "Set PKA_ALLOW_EMPIRICAL=1 only if you knowingly want labeled empirical output."
+        )
+    if not sol_ok:
+        logger.error(
+            "Solubility is UNAVAILABLE — trained weights did not load, so "
+            "/api/predict-solubility, /api/batch-solubility and the solubility portion "
+            "of /api/predict-all will return 503. Set SOLUBILITY_ALLOW_ESOL=1 only if "
+            "you knowingly want labeled ESOL output."
         )
 
 
@@ -382,6 +392,8 @@ async def predict_pka(req: PkaRequest, _key=Header(None, alias="x-api-key")):
         confidence=result.confidence,
         uncertainty=result.uncertainty,
         model_version=result.model_version,
+        degraded=result.degraded,
+        degraded_reason=result.degraded_reason,
     )
 
 
@@ -402,6 +414,7 @@ async def batch_pka(req: BatchRequest, _key=Header(None, alias="x-api-key")):
                 smiles=r.smiles, pka_values=r.pka_values,
                 ionizable_groups=r.ionizable_groups, method=r.method, confidence=r.confidence,
                 uncertainty=r.uncertainty, model_version=r.model_version,
+                degraded=r.degraded, degraded_reason=r.degraded_reason,
             ))
         else:
             results.append(None)
@@ -415,10 +428,22 @@ async def batch_pka(req: BatchRequest, _key=Header(None, alias="x-api-key")):
 
 # --- Solubility ---
 
+_SOLUBILITY_UNAVAILABLE_DETAIL = (
+    "Solubility model weights are unavailable — the service could not load the "
+    "trained checkpoint, so it returns no prediction rather than emit a crude ESOL "
+    "descriptor estimate silently. Wire the model weights (see "
+    "docs/deploying-services/novomcp-properties.md), or set SOLUBILITY_ALLOW_ESOL=1 "
+    "to explicitly opt into clearly-labeled ESOL output."
+)
+
+
 @app.post("/api/predict-solubility", response_model=SolubilityResponse)
 async def predict_solubility(req: SolubilityRequest, _key=Header(None, alias="x-api-key")):
     if API_KEY and _key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
+
+    if not solubility.is_available():
+        raise HTTPException(status_code=503, detail=_SOLUBILITY_UNAVAILABLE_DETAIL)
 
     result = solubility.predict(req.smiles, req.temperature_k)
     if result is None:
@@ -439,6 +464,9 @@ async def predict_solubility(req: SolubilityRequest, _key=Header(None, alias="x-
 async def batch_solubility(req: BatchRequest, _key=Header(None, alias="x-api-key")):
     if API_KEY and _key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
+
+    if not solubility.is_available():
+        raise HTTPException(status_code=503, detail=_SOLUBILITY_UNAVAILABLE_DETAIL)
 
     t0 = time.time()
     results = []
@@ -512,9 +540,12 @@ async def predict_all(req: CombinedRequest, _key=Header(None, alias="x-api-key")
             resp.pka = PkaResponse(
                 smiles=r.smiles, pka_values=r.pka_values,
                 ionizable_groups=r.ionizable_groups, method=r.method, confidence=r.confidence,
+                degraded=r.degraded, degraded_reason=r.degraded_reason,
             )
 
     if req.include_solubility:
+        if not solubility.is_available():
+            raise HTTPException(status_code=503, detail=_SOLUBILITY_UNAVAILABLE_DETAIL)
         r = solubility.predict(req.smiles, req.temperature_k)
         if r:
             resp.solubility = SolubilityResponse(
