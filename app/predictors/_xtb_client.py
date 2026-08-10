@@ -244,8 +244,8 @@ def get_xtb_data(smiles: str) -> dict:
     """
     data = get_energy(smiles)
     if not data:
-        return {}
-    return {
+        return {"_error": "no response from novomcp-qm"}
+    result = {
         "energy_hartree": data.get("energy_hartree", 0.0) or 0.0,
         "homo_ev": data.get("homo_ev", 0.0) or 0.0,
         "lumo_ev": data.get("lumo_ev", 0.0) or 0.0,
@@ -253,3 +253,8 @@ def get_xtb_data(smiles: str) -> dict:
         "dipole_debye": data.get("dipole_debye", 0.0) or 0.0,
         "partial_charges": data.get("partial_charges", []),
     }
+    # Propagate the failure reason so callers can flag a degraded prediction
+    # instead of silently running the model on zero features/charges.
+    if data.get("_error"):
+        result["_error"] = data["_error"]
+    return result
