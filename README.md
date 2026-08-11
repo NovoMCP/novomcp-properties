@@ -10,6 +10,17 @@ NonCommercial** and opt-in (see [pKa weights](#pka-weights-noncommercial)).
 
 ## Quick start
 
+Build and run from source — the recommended path; no dependency on a prebuilt image:
+
+```bash
+git clone https://github.com/NovoMCP/novomcp-properties.git
+cd novomcp-properties
+docker build -t novomcp-properties .
+docker run -p 8030:8030 novomcp-properties
+```
+
+Or pull the prebuilt image if you prefer:
+
 ```bash
 docker run -p 8030:8030 ghcr.io/novomcp/novomcp-properties:latest
 ```
