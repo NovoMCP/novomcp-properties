@@ -21,7 +21,7 @@ from app.predictors import pka, solubility, bde, frontier_orbitals, redox, react
 
 # Logging
 logging.basicConfig(
-    format="[NovoQuantNexus] %(name)s - %(levelname)s - %(message)s",
+    format="[NovoMCP] %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
 logger = logging.getLogger("novomcp-properties")
