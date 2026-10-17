@@ -304,6 +304,15 @@ def _predict_v9(smiles: str) -> Optional[PkaResult]:
         # Build datapoint
         has_charges = (route_label == "v8-charges")
         if has_charges:
+            # The v8 head was trained on standardized global features, but the
+            # checkpoints carry no scaler, and raw values (energy ~ -30 Eh) push
+            # predictions 5-15 units off (benzenesulfonamide 3.9 vs exp 10.1).
+            # Zero is the training mean of a standardized feature; an approximate
+            # z-score gives the same predictions within ~0.2. Use zeros until the
+            # training scaler is shipped with the weights. (v7's global weights
+            # are exactly zero, so it is unaffected either way.)
+            global_feats = np.zeros_like(global_feats)
+
             mol = Chem.MolFromSmiles(smiles)
             if mol is None:
                 return _predict_empirical(smiles)
@@ -642,10 +651,10 @@ def _detect_ionizable_groups(smiles: str) -> list[str]:
     patterns = {
         "carboxylic_acid": "[CX3](=O)[OX2H1]",
         "phenol": "[OX2H]c1ccccc1",
-        "primary_amine": "[NX3H2;!$(NC=O)]",
+        "primary_amine": "[NX3H2;!$(NC=O);!$(NS(=O)=O)]",
         "secondary_amine": "[NX3H1;!$(NC=O)]([#6])[#6]",
         "tertiary_amine": "[NX3H0;!$(NC=O)]([#6])([#6])[#6]",
-        "sulfonamide": "[#16](=O)(=O)[NX3H]",
+        "sulfonamide": "[#16](=O)(=O)[NX3;H1,H2]",   # primary -SO2NH2 as well as -SO2NHR
         "thiol": "[SX2H]",
         "imidazole": "c1c[nH]cn1",
         "pyridine": "n1ccccc1",
